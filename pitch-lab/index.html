@@ -1,0 +1,422 @@
+<title>Pitch Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: instrument console. Browser-style pitch tabs over a 3D stage, an editable metrics board
+   right under it (inputs and results in one grid), and a side rack for seam, pitcher and environment. */
+:root {
+  --bg: #10151c;
+  --panel: #171e27;
+  --panel-2: #1e2732;
+  --line: #2c3845;
+  --fg: #e4e9ef;
+  --muted: #8a99a8;
+  --accent: #f0a93b;
+  --data: #6fd0dc;
+  --good: #5cc98a;
+  --bad: #ef6b5b;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: var(--font-body); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 32px;
+}
+button, input, select { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, .ptab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 28px; letter-spacing: 0.04em; text-transform: uppercase; }
+.brand span { color: var(--accent); }
+.player { font-family: var(--font-display); font-weight: 600; font-size: 24px; letter-spacing: 0.02em; background: none; border: 0; border-bottom: 1px dashed var(--line); padding: 0 2px; min-width: 0; width: 240px; max-width: 100%; }
+.player::placeholder { color: var(--muted); }
+.player:focus { outline: none; border-bottom-color: var(--accent); }
+.setbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.setmenu { width: 280px; max-width: calc(100vw - 16px); max-height: 320px; overflow-y: auto; font-size: 13px; color: var(--muted); }
+.setnone { padding: 8px; }
+.setrow { display: flex; align-items: stretch; gap: 2px; }
+.menu .setload { flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; gap: 0; color: var(--fg); }
+.setload b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; max-width: 190px; white-space: nowrap; }
+.setload span { font-size: 11px; color: var(--muted); }
+.menu .setdel { width: auto; flex: none; color: var(--muted); font-size: 12px; }
+.menu .setdel[data-armed="1"] { color: var(--bad); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 14px; align-items: start; }
+@media (max-width: 1020px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* pitch tabs */
+.ptabs { display: flex; align-items: flex-end; gap: 2px; overflow-x: auto; scrollbar-width: thin; }
+.ptab {
+  display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 210px; flex: none;
+  background: var(--panel); border: 1px solid var(--line); border-bottom: 0; border-radius: 6px 6px 0 0;
+  padding: 6px 6px 6px 10px; cursor: pointer; color: var(--muted); white-space: nowrap; opacity: 0.75;
+}
+.ptab[aria-selected="true"] { background: var(--panel-2); color: var(--fg); opacity: 1; box-shadow: inset 0 2px 0 var(--pc); }
+.ptab .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--pc); flex: none; }
+.ptab .lbl { overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.ptab .meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.ptab .x { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 0 4px; border-radius: 3px; line-height: 1; font-size: 15px; }
+.ptab .x:hover { color: var(--fg); background: var(--line); }
+.ptab .lock { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 2px 3px; border-radius: 3px; line-height: 0; }
+.ptab .lock:hover { color: var(--fg); background: var(--line); }
+.ptab .lock[aria-pressed="true"] { color: var(--accent); }
+.ptab.off .lbl { text-decoration: line-through; }
+.addwrap { flex: none; }
+.addbtn { background: none; border: 1px dashed var(--line); border-bottom: 0; border-radius: 6px 6px 0 0; padding: 6px 12px; cursor: pointer; color: var(--muted); }
+.addbtn:hover { color: var(--fg); }
+.menu { position: absolute; z-index: 20; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px; min-width: 190px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+.menu button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+.menu button:hover, .menu button:focus-visible { background: var(--line); outline: none; }
+.menu i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+
+/* stage */
+.stage { position: relative; background: #0b0f14; border: 1px solid var(--line); border-radius: 0 6px 6px 6px; overflow: hidden; aspect-ratio: 16 / 9; max-width: 100%; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+.stage[data-view="pitcher"] canvas, .stage[data-view="catcher"] canvas, .stage[data-view="batter"] canvas { cursor: crosshair; }
+.hud { position: absolute; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.call { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.06em; padding: 2px 10px; border-radius: 3px; background: rgba(16, 21, 28, 0.78); width: max-content; }
+.call.strike { color: var(--good); }
+.call.ball { color: var(--bad); }
+.viewsw { position: absolute; right: 10px; top: 10px; display: flex; }
+.viewsw button { background: rgba(23, 30, 39, 0.88); border: 1px solid var(--line); padding: 4px 12px; cursor: pointer; font-size: 13px; }
+.viewsw button:first-child { border-radius: 4px 0 0 4px; }
+.viewsw button + button { border-left: 0; }
+.viewsw button:last-child { border-radius: 0 4px 4px 0; }
+.viewsw button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); border-left: 1px solid var(--accent); }
+.stage-ctrl { position: absolute; right: 10px; bottom: 10px; max-width: 52%; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.stage-opts { position: absolute; left: 10px; bottom: 10px; max-width: 46%; display: flex; gap: 6px; flex-wrap: wrap; }
+.stage-opts button { background: rgba(23, 30, 39, 0.88); border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 13px; }
+.stage-opts button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.stage-opts button::before { content: "○ "; }
+.stage-opts button[aria-pressed="true"]::before { content: "● "; }
+.vaa-label { position: absolute; transform: translate(-50%, -160%); font-family: var(--font-mono); font-size: 12px; color: #fff; background: rgba(16, 21, 28, 0.85); border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; pointer-events: none; white-space: nowrap; }
+.stage-ctrl button, .chip, .seg button, .btn {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 13px;
+}
+.stage-ctrl button { background: rgba(23, 30, 39, 0.88); }
+.stage-ctrl button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.stage-ctrl #playAll::before { content: "○ "; }
+.stage-ctrl #playAll[aria-pressed="true"]::before { content: "● "; }
+.btn.primary { background: var(--accent); color: #1a1205; border-color: var(--accent); font-weight: 600; }
+.btn.small { padding: 3px 8px; font-size: 12px; }
+.chip[aria-pressed="true"], .seg button[aria-pressed="true"], .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: rgba(240, 169, 59, 0.1); }
+.empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; pointer-events: none; padding: 16px; }
+.empty > div { pointer-events: auto; background: rgba(16, 21, 28, 0.85); border: 1px solid var(--line); border-radius: 8px; padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 330px; }
+.empty h2 { margin: 0; font-family: var(--font-display); font-weight: 600; letter-spacing: 0.05em; font-size: 22px; text-transform: uppercase; }
+.empty p { margin: 0; color: var(--muted); font-size: 13px; }
+
+/* metrics board: inputs and results in one grid */
+.board { margin-top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.bhead { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.bhead .pname { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 600; font-size: 20px; letter-spacing: 0.04em; }
+.bhead .pname i { width: 11px; height: 11px; border-radius: 50%; }
+.bhead label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.bhead select { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; color: var(--fg); }
+.bhead .spacer { flex: 1; }
+.legend-in { font-size: 11.5px; color: var(--muted); display: flex; gap: 12px; align-items: center; }
+.legend-in i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.legend-in .e { border: 1px solid var(--accent); background: rgba(240, 169, 59, 0.12); }
+.legend-in .o { background: var(--panel); border: 1px solid var(--line); }
+.groups { display: flex; flex-direction: column; }
+.group { display: grid; grid-template-columns: 76px minmax(0, 1fr); border-bottom: 1px solid var(--line); }
+.group:last-child { border-bottom: 0; }
+.glabel { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 10px 0 0 12px; }
+.ggrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border-left: 1px solid var(--line); }
+@media (max-width: 640px) {
+  .group { grid-template-columns: minmax(0, 1fr); }
+  .glabel { padding: 8px 12px 4px; }
+  .ggrid { grid-template-columns: repeat(2, minmax(0, 1fr)); border-left: 0; border-top: 1px solid var(--line); }
+}
+.tile { background: var(--panel); padding: 7px 10px 8px; min-width: 0; display: flex; flex-direction: column; gap: 2px; position: relative; }
+.tile.span2 { grid-column: span 2; }
+.tile .k { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 22px; }
+.tile .k b { color: var(--fg); font-weight: 600; }
+.tile .v { display: flex; align-items: baseline; gap: 3px; min-width: 0; }
+.tile .v input, .tile .v output {
+  font-family: var(--font-display); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1;
+  background: none; border: 0; padding: 0; width: 100%; min-width: 0; color: var(--fg);
+}
+.tile .v small { font-size: 14px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.tile .s { font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile input[type="range"] { width: 100%; accent-color: var(--accent); height: 16px; margin: 0; }
+.tile.edit { background: var(--panel-2); box-shadow: inset 0 -2px 0 var(--accent); }
+.tile.edit .v input { color: var(--accent); cursor: text; border-bottom: 1px dashed rgba(240, 169, 59, 0.35); }
+.tile.edit .v input:focus { outline: none; border-bottom-color: var(--accent); }
+.tile.ssw .v output { color: #ff6fe0; }
+.tile .call-v { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: 0.06em; }
+.tile .call-v.strike { color: var(--good); }
+.tile .call-v.ball { color: var(--bad); }
+.rst { position: absolute; right: 6px; top: 5px; width: 20px; height: 20px; border-radius: 4px; border: 1px solid transparent; background: none; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 0; }
+.rst:hover { border-color: var(--line); color: var(--fg); }
+.rst[disabled] { opacity: 0.25; cursor: default; }
+.rst.on { color: var(--accent); }
+.board-empty { padding: 26px 16px; text-align: center; color: var(--muted); }
+
+.views { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+@media (max-width: 640px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.card h3 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.card canvas { width: 100%; display: block; }
+
+/* rack */
+.rack { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; min-width: 0; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
+.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 4px 8px; cursor: pointer; color: var(--muted); font-weight: 500; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.pane { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.pane .pane { padding: 0; }
+.group-title { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.rows { display: flex; flex-direction: column; gap: 10px; }
+.row { display: grid; grid-template-columns: 100px minmax(0, 1fr) 80px 22px; gap: 6px; align-items: center; }
+.row label { font-size: 13px; }
+.row label small { display: block; color: var(--muted); font-size: 10.5px; line-height: 1.2; }
+.row input[type="range"] { width: 100%; accent-color: var(--accent); }
+.row .rst { position: static; }
+.num { display: flex; align-items: center; gap: 3px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; min-width: 0; }
+.num input { width: 100%; min-width: 0; background: none; border: 0; text-align: right; font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; padding: 0; }
+.num span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.seg { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; }
+.note { font-size: 12px; color: var(--muted); }
+.note b { color: var(--fg); font-weight: 500; }
+.check { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.check input { accent-color: var(--accent); }
+.check select { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 2px 4px; }
+.solve { font-family: var(--font-mono); font-size: 12px; color: var(--data); padding: 8px 12px 10px; border-top: 1px solid var(--line); }
+.pane-empty { color: var(--muted); font-size: 13px; padding: 18px 4px; text-align: center; }
+
+/* seam editor */
+.ballbox { position: relative; background: #0b0f14; border: 1px solid var(--line); border-radius: 6px; aspect-ratio: 1; max-width: 100%; }
+.ballbox canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.ballbox .tip { position: absolute; left: 8px; right: 8px; bottom: 6px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.ballbox .camsw { position: absolute; left: 6px; top: 6px; display: flex; gap: 3px; flex-wrap: wrap; }
+.ballbox .camsw button { background: rgba(23, 30, 39, 0.9); border: 1px solid var(--line); border-radius: 3px; padding: 2px 7px; font-size: 11.5px; cursor: pointer; }
+.ballbox .camsw button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 10px; font-size: 11.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 16px; height: 4px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.rot { display: grid; grid-template-columns: 92px 30px minmax(0, 1fr) 30px; gap: 5px; align-items: center; }
+.rot label { font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+.rot label i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.rot button { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; height: 26px; cursor: pointer; }
+.rotwrap { display: flex; flex-direction: column; gap: 6px; }
+.ssw-read { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ssw-read div { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 7px; min-width: 0; }
+.ssw-read .k { font-size: 11px; color: var(--muted); }
+.ssw-read .v { font-family: var(--font-display); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* spin picture-in-picture, black and white on purpose */
+.pip {
+  position: fixed; z-index: 30; width: 168px;
+  right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: #000; border: 1px solid #3a3a3a; border-radius: 8px; overflow: hidden; cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); color: #d9d9d9;
+}
+.pip canvas { display: block; width: 100%; aspect-ratio: 1; }
+.pip .cap { font-family: var(--font-mono); font-size: 11px; padding: 5px 8px 6px; border-top: 1px solid #2a2a2a; display: flex; justify-content: space-between; gap: 6px; }
+.pip .cap b { font-weight: 500; color: #ffffff; }
+.pip .lbl { position: absolute; left: 8px; top: 6px; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8c8c8c; pointer-events: none; }
+
+/* table */
+.compare { margin-top: 12px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px; }
+th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-weight: 500; color: var(--muted); font-size: 12px; }
+th:first-child, td:first-child { text-align: left; }
+td.name { display: flex; gap: 8px; align-items: center; }
+td.name i { width: 10px; height: 10px; border-radius: 50%; }
+tbody tr[data-id] { cursor: pointer; opacity: 0.55; }
+tbody tr.current { opacity: 1; background: rgba(240, 169, 59, 0.06); }
+.foot { margin-top: 14px; font-size: 12px; color: var(--muted); max-width: 100ch; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="top">
+  <div class="brand">Pitch<span>Lab</span></div>
+  <input class="player" id="playerName" type="text" maxlength="40" placeholder="Player name" aria-label="Player name" autocomplete="off">
+  <div class="setbar">
+    <button type="button" class="btn small" id="saveSet">Save set</button>
+    <button type="button" class="btn small" id="openSets" aria-haspopup="true">Sets ▾</button>
+    <span class="note" id="setStatus" role="status"></span>
+  </div>
+</header>
+
+<div class="layout">
+  <main style="min-width:0">
+    <div class="ptabs" id="ptabs" role="tablist" aria-label="Pitches"></div>
+    <div class="stage" id="stage" data-view="pitcher">
+      <canvas id="scene"></canvas>
+      <div class="hud">
+        <div class="call" id="call" hidden>—</div>
+      </div>
+      <div class="viewsw" id="viewsw">
+        <button type="button" data-view="pitcher" aria-pressed="true">Pitcher</button>
+        <button type="button" data-view="batter" aria-pressed="false">Batter</button>
+        <button type="button" data-view="side" aria-pressed="false">Side</button>
+        <button type="button" data-view="catcher" aria-pressed="false">Catcher</button>
+      </div>
+      <div class="empty" id="empty" hidden>
+        <div>
+          <h2>No pitches yet</h2>
+          <p>Add a pitch to draw its flight. Each pitch opens as a tab, and the one you select is drawn brightest.</p>
+          <button type="button" class="btn primary" id="emptyAdd" aria-haspopup="true">+ Add pitch</button>
+        </div>
+      </div>
+      <div class="stage-opts" id="stageOpts">
+        <button type="button" class="opt" id="tunnelBtn" aria-pressed="false" title="Mark where each pitch is 0.175 s after release">Pitch tunnel</button>
+        <button type="button" class="opt" id="gatherBtn" aria-pressed="false" hidden title="Re-aim every pitch so its 0.175 s position sits on the reference pitch's path. Turning this off restores the targets">Gathering</button>
+        <button type="button" class="opt" id="vaaBtn" aria-pressed="false" hidden title="Show the vertical approach angle of the selected pitch">VAA</button>
+      </div>
+      <div class="vaa-label" id="vaaLabel" hidden></div>
+      <div class="stage-ctrl" id="stageCtrl" hidden>
+        <button id="playAll" type="button" aria-pressed="false" title="Play every pitch on screen together">All pitches</button>
+        <button id="play" type="button">▶ Play</button>
+        <button id="speed" type="button">Speed 0.25×</button>
+      </div>
+    </div>
+
+    <section class="board" id="board" aria-label="Pitch metrics">
+      <div class="bhead" id="bhead">
+        <div class="pname"><i id="pdot"></i><span id="ptitle">—</span></div>
+        <label>Type <select id="ptype"></select></label>
+        <div class="seg" id="mode">
+          <button type="button" data-mode="physics" aria-pressed="true">Spin → Movement</button>
+          <button type="button" data-mode="movement" aria-pressed="false">Movement → Spin</button>
+        </div>
+        <span class="spacer"></span>
+        <span class="legend-in"><span><i class="e"></i>editable</span><span><i class="o"></i>result</span></span>
+        <button type="button" class="btn small" id="resetAll">↺ Reset all</button>
+      </div>
+      <div class="groups" id="groups"></div>
+      <div class="solve" id="solveOut" hidden></div>
+      <div class="solve" id="tunnelInfo" hidden></div>
+      <div class="board-empty" id="boardEmpty" hidden>Add a pitch to see and edit its metrics.</div>
+    </section>
+
+    <div class="views">
+      <div class="card"><h3>Top view · Horizontal path</h3><canvas id="top" data-h="230" style="height:230px"></canvas></div>
+      <div class="card"><h3>Movement · IVB × HB</h3><canvas id="mov" data-h="230" style="height:230px"></canvas></div>
+    </div>
+
+    <section class="card compare">
+      <h3>Pitches on screen</h3>
+      <div class="tablewrap"><table id="cmp"></table></div>
+    </section>
+  </main>
+
+  <aside class="rack">
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="ball" id="tab-ball">Seam</button>
+      <button role="tab" aria-selected="false" data-tab="pitcher" id="tab-pitcher">Pitcher</button>
+      <button role="tab" aria-selected="false" data-tab="env" id="tab-env">Env.</button>
+    </div>
+
+    <div class="pane" data-pane="ball">
+      <div class="pane-empty" id="ballEmpty">Add a pitch to set its seam orientation.</div>
+      <div id="ballEdit" class="pane">
+        <div class="ballbox">
+          <canvas id="ballCanvas"></canvas>
+          <div class="camsw" id="ballView">
+            <button type="button" data-v="persp" aria-pressed="true">Persp.</button>
+            <button type="button" data-v="pitcher" aria-pressed="false">Pitcher</button>
+            <button type="button" data-v="side" aria-pressed="false">3B side</button>
+            <button type="button" data-v="axis" aria-pressed="false">Down axis</button>
+          </div>
+          <div class="tip">Drag a ring to turn on one axis · drag the ball to tumble · drag the background to orbit · scroll to zoom</div>
+        </div>
+        <div class="legend">
+          <span><i style="background:#f0a93b"></i>Spin axis</span>
+          <span><i style="background:#6fd0dc"></i>Direction of travel</span>
+          <span><i style="background:#ff4fd8"></i>SSW force</span>
+          <span><i style="background:linear-gradient(90deg,#ffffff 50%,rgba(255,255,255,.35) 50%)"></i>Separation / trip zone</span>
+        </div>
+        <div class="rotwrap" id="rotRows"></div>
+        <div class="seg">
+          <label class="check" style="margin-right:auto">Step
+            <select id="rotStep">
+              <option value="5">5°</option><option value="15" selected>15°</option><option value="45">45°</option><option value="90">90°</option>
+            </select>
+          </label>
+          <button type="button" class="btn small" id="spinToggle" aria-pressed="false">Spin it</button>
+          <button type="button" class="btn small" id="orientReset">↺ Reset orientation</button>
+        </div>
+        <div class="group-title">Orientation presets</div>
+        <div class="chips" id="orientPresets"></div>
+        <div class="ssw-read">
+          <div><div class="k">Seams / rev.</div><div class="v" id="sswSeams">—</div></div>
+          <div><div class="k">Asymmetry</div><div class="v" id="sswLevel">—</div></div>
+          <div><div class="k">Axis deviation</div><div class="v" id="sswClock">—</div></div>
+        </div>
+        <div class="seg">
+          <label class="check"><input type="checkbox" id="sswOn"> Apply SSW to the flight</label>
+          <label class="check"><input type="checkbox" id="showZones" checked> Flow zones</label>
+          <label class="check"><input type="checkbox" id="showGizmo" checked> Rotate rings</label>
+        </div>
+        <div class="rows" id="sswRows"></div>
+        <div class="note" id="sswWhy"></div>
+        <div class="note">SSW here is a simplified concept model. It compares, across one revolution, how long the seams sit in the trip zone and on the separation line on each side of the spin axis. Orientations that look the same on both sides, such as a clean 4-seam or 2-seam, give zero. Use it for the direction of the effect, not its exact size.</div>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="pitcher" hidden>
+      <div class="group-title">Pitcher</div>
+      <div class="seg" id="hand">
+        <button type="button" data-hand="R" aria-pressed="true">RHP</button>
+        <button type="button" data-hand="L" aria-pressed="false">LHP</button>
+      </div>
+      <div class="seg" id="slot">
+        <button type="button" data-slot="over" aria-pressed="false">Over the top</button>
+        <button type="button" data-slot="tq" aria-pressed="true">3/4</button>
+        <button type="button" data-slot="side" aria-pressed="false">Sidearm</button>
+        <button type="button" data-slot="sub" aria-pressed="false">Submarine</button>
+      </div>
+      <div class="rows" id="pitcherRows"></div>
+      <div class="note" id="autoRelNote"></div>
+      <div class="group-title">Batter</div>
+      <div class="seg" id="batter">
+        <button type="button" data-b="R" aria-pressed="true">RHB</button>
+        <button type="button" data-b="L" aria-pressed="false">LHB</button>
+        <button type="button" data-b="none" aria-pressed="false">None</button>
+      </div>
+      <div class="rows" id="batterRows"></div>
+      <div class="note">Zone height follows the KBO ABS rule: 27.64% to 56.35% of batter height. A pitch that touches the zone edge is a strike.</div>
+    </div>
+
+    <div class="pane" data-pane="env" hidden>
+      <div class="group-title">Air</div>
+      <div class="rows" id="envRows"></div>
+      <div class="chips" id="venues"></div>
+      <div class="group-title">Wind</div>
+      <div class="rows" id="windRows"></div>
+      <div class="note">Wind dir. 0° blows from the mound toward home (tailwind), 180° is a headwind, 90° blows toward the 1B side.</div>
+      <div class="group-title">Mound</div>
+      <div class="rows" id="moundRows"></div>
+      <div class="note" id="rhoNote"></div>
+      <div class="group-title">Pitcher view camera</div>
+      <div class="rows" id="camRows"></div>
+    </div>
+  </aside>
+</div>
+
+<p class="foot">Click a trajectory to select it. Outside the Side view, click anywhere else to set the target. Spin is shown at 1/40 speed at the release point and 1/80 in the inset.</p>
+<p class="foot">Model: drag and lift follow Alan Nathan's baseball trajectory fits; the spin axis is held fixed in space during flight. Breaks follow TrackMan's definitions at the front of the plate, against the straight line along the release velocity: VertBreak includes gravity, InducedVertBreak removes it. Horizontal values (HB, RelSide, PlateLocSide, HorzApprAngle) are + toward the 3B side, the pitcher's right, matching TrackMan's HorzRelAngle (+ toward the RHB box). Tilt is the movement direction on a clock seen from the pitcher (12:00 = pure backspin); SpinAxis = 180° + 30° per hour of tilt. Release defaults are estimated from the pitcher's height and arm slot until you edit them. A pitch's tunnel point is its position 0.175 s after release. The reference is the leftmost Fastball tab, or the leftmost tab when there is no Fastball; gathering re-aims the other pitches so their tunnel points sit on the reference pitch's path.</p>
+
+<button type="button" class="pip" id="pip" hidden aria-label="Spin of the selected pitch. Opens the seam editor.">
+  <span class="lbl"><span id="pipName">—</span> · pitcher view</span>
+  <canvas id="pipCanvas"></canvas>
+  <span class="cap"><b id="pipTilt">—</b><span id="pipRpm">—</span></span>
+</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="physics.js"></script>
+<script src="app.js"></script>
