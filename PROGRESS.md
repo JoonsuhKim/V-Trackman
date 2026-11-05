@@ -3,7 +3,7 @@
 투수가 실제로 던지지 않고도 투구 수치와 궤적의 관계를 눈으로 익히도록 만드는 3D 투구 궤적 시뮬레이터.
 
 - 게시된 페이지: https://claude.ai/artifact/Rgsh2WCF95isKZtLTGfRZE (비공개, Share 메뉴로 공유)
-- 마지막 정리: 2026-11-02
+- 마지막 정리: 2026-11-04
 
 ## 파일
 
@@ -13,13 +13,11 @@
 | `pitch-lab/app.js` | UI: 투구 탭, 3D 필드, 수치 보드, 실밥 편집기, 흑백 PiP |
 | `pitch-lab/physics.js` | 물리 엔진: 항력, 마그누스, SSW, TrackMan식 무브먼트 계산 |
 
-로컬에서 보기 (`index.html`은 게시용이라 `<!doctype>`과 charset이 빠져 있음):
+로컬에서 보기 (`index.html`은 게시용이라 `<!doctype>`이 없고, 인코딩이 깨지지 않도록 첫 줄에 charset을 둠):
 
 ```bash
 cd pitch-lab && python3 -m http.server 8765
 ```
-
-브라우저에서 `index.html`을 열 때 한글이 깨지면 맨 위에 `<!doctype html><meta charset="utf-8">`을 붙인 사본으로 확인한다.
 
 ## 로드맵
 
@@ -32,6 +30,7 @@ cd pitch-lab && python3 -m http.server 8765
 ## 지금 구현된 것
 
 - 인터페이스는 영어, 단위는 mph·inch·ft, 용어는 TrackMan CSV 필드명 기준
+- 디자인: 애플 스타일. 시스템 글꼴(SF), 시스템 설정을 따르는 라이트/다크, 그룹형 패널, 세그먼트 컨트롤, iOS식 스위치와 슬라이더, 유리 재질 컨트롤. 3D 필드·실밥 편집기·PiP는 어느 모드에서나 검은 배경. 구종·축 색은 애플 시스템 컬러, PiP 띠는 사용자 요청대로 클로드 주황색 유지
 - 처음 열면 존 한가운데로 가는 직구 하나. 투구는 브라우저 탭처럼 추가·선택·삭제, 선택한 투구만 진하게
 - 시점: Pitcher(투구판 10 ft 뒤) · Batter(웅크린 눈높이, 신장의 80%, 화각 46°. 릴리스는 우타자 기준 2사분면 중앙, 존 가운데는 4사분면 중앙에 오도록 `app.js`의 `batterPose`가 카메라 위치와 각도를 계산, 좌타자는 좌우 대칭. 존이 잘리지 않아 실제 눈 위치는 아님) · Side · Catcher(존 상단 1/3 높이), 전환 시 카메라가 호를 그리며 1.1초 동안 이동
 - Play: 공이 날아가는 만큼 잔상이 자라남. All pitches를 켜면 모든 투구를 함께 재생

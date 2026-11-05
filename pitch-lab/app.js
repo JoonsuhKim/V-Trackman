@@ -4,7 +4,7 @@
 var P = window.PitchPhysics, V = P.vec, Q = P.quat, C = P.constants;
 var HALF_PLATE = 0.2159, R_BALL = C.BALL_RADIUS;
 var IN = 0.0254, FT = 0.3048, MPH = 0.44704;
-var COL = { axis: '#f0a93b', travel: '#6fd0dc', ssw: '#ff4fd8', gx: '#ff5c5c', gy: '#5fd38a', gz: '#5aa2ff' };
+var COL = { axis: '#ff9f0a', travel: '#64d2ff', ssw: '#ff5fdc', gx: '#ff453a', gy: '#30d158', gz: '#0a84ff' };
 
 // ---------- presets ----------
 var ORIENT = {
@@ -16,14 +16,14 @@ var ORIENT = {
 };
 // Tilt in hours for an RHP, mirrored for lefties. Placeholder values until real TrackMan defaults are supplied.
 var TYPES = [
-  { id: 'FB', name: 'Fastball',  color: '#e5484d', mph: 94.0, rpm: 2350, tilt: 1.0,  eff: 95, orient: '4S' },
-  { id: 'SI', name: 'Sinker',    color: '#f2994a', mph: 92.5, rpm: 2150, tilt: 2.25, eff: 90, orient: '2Sx' },
-  { id: 'CT', name: 'Cutter',    color: '#b07a4a', mph: 88.5, rpm: 2400, tilt: 11.5, eff: 45, orient: '4S' },
-  { id: 'SL', name: 'Slider',    color: '#e8c547', mph: 84.0, rpm: 2500, tilt: 9.5,  eff: 30, orient: '4S' },
-  { id: 'SW', name: 'Sweeper',   color: '#b9d84a', mph: 81.5, rpm: 2650, tilt: 9.0,  eff: 80, orient: '2S' },
-  { id: 'CB', name: 'Curveball', color: '#4d8ff0', mph: 78.0, rpm: 2650, tilt: 7.0,  eff: 80, orient: '4S' },
-  { id: 'CH', name: 'Changeup',  color: '#45b36b', mph: 84.5, rpm: 1800, tilt: 2.25, eff: 85, orient: '2Sx' },
-  { id: 'SP', name: 'Splitter',  color: '#3fb8af', mph: 86.0, rpm: 1300, tilt: 1.75, eff: 70, orient: '2S' }
+  { id: 'FB', name: 'Fastball',  color: '#ff453a', mph: 94.0, rpm: 2350, tilt: 1.0,  eff: 95, orient: '4S' },
+  { id: 'SI', name: 'Sinker',    color: '#ff9f0a', mph: 92.5, rpm: 2150, tilt: 2.25, eff: 90, orient: '2Sx' },
+  { id: 'CT', name: 'Cutter',    color: '#ac8e68', mph: 88.5, rpm: 2400, tilt: 11.5, eff: 45, orient: '4S' },
+  { id: 'SL', name: 'Slider',    color: '#ffd60a', mph: 84.0, rpm: 2500, tilt: 9.5,  eff: 30, orient: '4S' },
+  { id: 'SW', name: 'Sweeper',   color: '#bf5af2', mph: 81.5, rpm: 2650, tilt: 9.0,  eff: 80, orient: '2S' },
+  { id: 'CB', name: 'Curveball', color: '#0a84ff', mph: 78.0, rpm: 2650, tilt: 7.0,  eff: 80, orient: '4S' },
+  { id: 'CH', name: 'Changeup',  color: '#30d158', mph: 84.5, rpm: 1800, tilt: 2.25, eff: 85, orient: '2Sx' },
+  { id: 'SP', name: 'Splitter',  color: '#64d2ff', mph: 86.0, rpm: 1300, tilt: 1.75, eff: 70, orient: '2S' }
 ];
 function typeById(id) { return TYPES.filter(function (t) { return t.id === id; })[0]; }
 var SLOTS = {
@@ -202,9 +202,9 @@ function buildBoard() {
     grp.items.forEach(function (t) {
       var el = document.createElement('div');
       el.className = 'tile' + (t.span ? ' span2' : '') + (t.cls ? ' ' + t.cls : '');
-      var label = '<b>' + t.name + '</b>' + (t.sub ? ' · ' + t.sub : '');
+      var label = '<b>' + t.name + '</b>' + (t.sub ? ' ' + t.sub : '');
       if (t.kind === 'call') {
-        el.innerHTML = '<div class="k"><b>Call</b> · KBO ABS zone</div><div class="v"><span class="call-v" data-r="call">—</span></div><div class="s" data-r="note">&nbsp;</div>';
+        el.innerHTML = '<div class="k"><b>Call</b> KBO ABS zone</div><div class="v"><span class="call-v" data-r="call">—</span></div><div class="s" data-r="note">&nbsp;</div>';
       } else if (t.out) {
         el.innerHTML = '<div class="k">' + label + '</div><div class="v"><output data-r="val">—</output><small>' + t.unit + '</small></div><div class="s" data-r="note">&nbsp;</div>';
       } else {
@@ -256,7 +256,7 @@ function updateBoard(force) {
     var note = el.querySelector('[data-r=note]');
     if (t.kind === 'call') {
       var c = judge(r), cv = el.querySelector('[data-r=call]');
-      cv.textContent = c == null ? '—' : c ? 'STRIKE' : 'BALL';
+      cv.textContent = c == null ? '—' : c ? 'Strike' : 'Ball';
       cv.className = 'call-v ' + (c ? 'strike' : 'ball');
       note.textContent = r && r.plate ? 'crosses at ' + (r.plate.p[2] / FT).toFixed(2) + ' ft high, ' + (-r.plate.p[0] / FT).toFixed(2) + ' ft side' : '';
       return;
@@ -341,7 +341,7 @@ function addRow(container, cfg) {
   rows[cfg.key] = entry;
   return entry;
 }
-function syncAll() { Object.keys(rows).forEach(function (k) { rows[k].sync(); }); updateAutoRelNote(); }
+function syncAll() { Object.keys(rows).forEach(function (k) { rows[k].sync(); }); updateAutoRelNote(); paintRanges(); }
 function ftIn(v) { return v + ' (' + Math.floor(v / 12) + '′' + (v % 12) + '″)'; }
 function updateAutoRelNote() {
   var a = autoRelease();
@@ -1120,7 +1120,7 @@ new ResizeObserver(function () { resizeStage(); drawViews(); }).observe(stage);
 var ballCanvas = $('ballCanvas');
 var bRenderer = new THREE.WebGLRenderer({ canvas: ballCanvas, antialias: true });
 bRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-var bScene = new THREE.Scene(); bScene.background = new THREE.Color('#0b0f14');
+var bScene = new THREE.Scene(); bScene.background = new THREE.Color('#000000');
 var bCam = new THREE.PerspectiveCamera(30, 1, 0.1, 60); bCam.up.set(0, 0, 1);
 bScene.add(new THREE.HemisphereLight('#ffffff', '#3a3f48', 0.9));
 var bl = new THREE.DirectionalLight('#ffffff', 0.5); bl.position.set(2, 3, 4); bScene.add(bl);
@@ -1404,7 +1404,11 @@ function prep(cv) {
   var ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
   return { ctx: ctx, w: w, h: h };
 }
-var INK = { grid: '#2c3845', text: '#8a99a8', zone: 'rgba(255,255,255,0.55)' };
+var INK = {}, PLOT_FONT = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", Roboto, sans-serif';
+function readInk() {
+  var cs = getComputedStyle(document.documentElement), tok = function (n) { return cs.getPropertyValue(n).trim(); };
+  INK = { grid: tok('--plot-grid'), axis: tok('--plot-axis'), text: tok('--plot-text'), zone: tok('--plot-zone'), ring: tok('--plot-ring') };
+}
 function ordered() { var sel = cur(); return S.pitches.filter(function (p) { return p !== sel && p.result && !p.hidden; }).concat(sel && sel.result && !sel.hidden ? [sel] : []); }
 
 function drawTop() {
@@ -1412,7 +1416,7 @@ function drawTop() {
   var span = C.RUBBER_Y + 0.5;
   var X = function (y) { return pad.l + (C.RUBBER_Y - y) / span * (c.w - pad.l - pad.r); };
   var Yp = function (x) { return (c.h - pad.b + pad.t) / 2 + x / (3.6 * FT) * (c.h - pad.t - pad.b); }; // 3B side (-x) drawn up
-  ctx.font = '11px "IBM Plex Mono", monospace'; ctx.fillStyle = INK.text; ctx.strokeStyle = INK.grid; ctx.lineWidth = 1;
+  ctx.font = '11px ' + PLOT_FONT; ctx.fillStyle = INK.text; ctx.strokeStyle = INK.grid; ctx.lineWidth = 1;
   [-1.5, -0.75, 0, 0.75, 1.5].forEach(function (ft) { var y = Yp(-ft * FT); ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(c.w - pad.r, y); ctx.stroke(); ctx.fillText(ft.toFixed(1), 2, y + 4); });
   var stepFt = c.w < 420 ? 20 : 10;
   for (var f = 0; f <= 60; f += stepFt) ctx.fillText(f + "'", X(f * FT) - 8, c.h - 6);
@@ -1429,12 +1433,12 @@ function drawMov() {
   var c = prep($('mov')), ctx = c.ctx, size = Math.min(c.w - 30, c.h - 24), ox = (c.w - size) / 2 + 8, oy = 6;
   var lim = 25, M = function (v) { return v / lim * size / 2; };
   var cx = ox + size / 2, cy = oy + size / 2;
-  ctx.font = '10px "IBM Plex Mono", monospace'; ctx.strokeStyle = INK.grid; ctx.fillStyle = INK.text; ctx.lineWidth = 1;
+  ctx.font = '11px ' + PLOT_FONT; ctx.strokeStyle = INK.grid; ctx.fillStyle = INK.text; ctx.lineWidth = 1;
   for (var g = -20; g <= 20; g += 5) {
     ctx.beginPath(); ctx.moveTo(cx + M(g), oy); ctx.lineTo(cx + M(g), oy + size); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(ox, cy - M(g)); ctx.lineTo(ox + size, cy - M(g)); ctx.stroke();
   }
-  ctx.strokeStyle = INK.text; ctx.beginPath(); ctx.moveTo(ox, cy); ctx.lineTo(ox + size, cy); ctx.moveTo(cx, oy); ctx.lineTo(cx, oy + size); ctx.stroke();
+  ctx.strokeStyle = INK.axis; ctx.beginPath(); ctx.moveTo(ox, cy); ctx.lineTo(ox + size, cy); ctx.moveTo(cx, oy); ctx.lineTo(cx, oy + size); ctx.stroke();
   [-20, -10, 10, 20].forEach(function (g) { ctx.fillText(g, cx + M(g) - 6, cy + 12); ctx.fillText(g, cx + 3, cy - M(g) + 3); });
   ctx.fillText('HB (in) →', ox + size - 56, cy - 5); ctx.fillText('IVB (in)', cx + 4, oy + 10);
   if (!S.pitches.length) ctx.fillText('No pitches yet', cx - 40, cy + 30);
@@ -1442,11 +1446,22 @@ function drawMov() {
     var r = p.result, hb = -r.breakX / IN, ivb = r.breakZ / IN, strong = p.id === S.sel;
     ctx.fillStyle = p.color; ctx.globalAlpha = strong ? 1 : 0.4;
     ctx.beginPath(); ctx.arc(cx + M(hb), cy - M(ivb), strong ? 6 : 4.5, 0, Math.PI * 2); ctx.fill();
-    if (strong) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke(); }
+    if (strong) { ctx.strokeStyle = INK.ring; ctx.lineWidth = 1.5; ctx.stroke(); }
   });
   ctx.globalAlpha = 1;
 }
-function drawViews() { drawTop(); drawMov(); }
+function drawViews() { readInk(); drawTop(); drawMov(); }
+// Redraw the plots when the appearance changes, whether from the system or the viewer's own toggle.
+if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawViews);
+new MutationObserver(drawViews).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+// Sliders show their filled part through --p, since WebKit has no track-progress pseudo element.
+function paintRanges() {
+  document.querySelectorAll('input[type=range]').forEach(function (r) {
+    var lo = +r.min || 0, hi = +r.max || 100;
+    r.style.setProperty('--p', ((r.value - lo) / (hi - lo) * 100) + '%');
+  });
+}
+document.addEventListener('input', function (e) { if (e.target.type === 'range') paintRanges(); });
 
 // ---------- call, table ----------
 function judge(r) {
@@ -1457,7 +1472,7 @@ function judge(r) {
 function renderHud() {
   var p = cur(), r = p && p.result, call = judge(r), el = $('call');
   el.hidden = call == null;
-  el.textContent = call ? 'STRIKE' : 'BALL';
+  el.textContent = call ? 'Strike' : 'Ball';
   el.className = 'call ' + (call ? 'strike' : 'ball');
   var rh = rho();
   $('rhoNote').innerHTML = 'Air density <b>' + rh.toFixed(3) + ' kg/m³</b> (' + ((rh / 1.204 - 1) * 100).toFixed(1) + '% vs. 68°F at sea level). Thinner air means less drag and less movement.';
@@ -1484,7 +1499,7 @@ function refresh(force) {
   $('empty').hidden = has; $('stageCtrl').hidden = !has;
   buildZone(); placeCamera(); rebuildPitches();
   var p = cur();
-  updateBoard(force); renderHud(); renderTunnelHud(); renderTable(); drawViews();
+  updateBoard(force); renderHud(); renderTunnelHud(); renderTable(); drawViews(); paintRanges();
   if (p) { updateSswReadout(); updateRotFields(); }
   if ($('tab-ball').getAttribute('aria-selected') === 'true') renderBall();
   requestRender();
